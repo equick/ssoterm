@@ -1,3 +1,7 @@
+==DEPENDENCIES==
+
+sshpass is required. This can be downloaded from http://sshpass.sourceforge.net/
+ssoterm expects this to exists at /usr/bin/sshpass
 
 ==INSTALL==
 
