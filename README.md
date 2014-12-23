@@ -2,6 +2,8 @@
 
 This is a menu wrapper for logging into remote hosts without having to repeatedly enter a password. It's aimed at administrators who manage large estates and designed to be easy to configure. The user is prompted for their password once at startup and this is stored in the process memory, but never revealed in ps ouput.
 
+![screenshot](http://i.imgur.com/p1HhoFN.png?1)
+
 ###DEPENDENCIES
 
 sshpass is required. This can be downloaded from http://sshpass.sourceforge.net/
