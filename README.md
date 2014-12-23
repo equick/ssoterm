@@ -1,6 +1,6 @@
 #SSOTERM
 
-This is a menu wrapper for logging into remote hosts without having to repeatedly enter a password. It's aimed at administrators who have large estates to manage and designed to be easy to configure. The user is prompted for their password once at startup and this is stored in the process memory, but never revealed in ps ouput.
+This is a menu wrapper for logging into remote hosts without having to repeatedly enter a password. It's aimed at administrators who manage large estates and designed to be easy to configure. The user is prompted for their password once at startup and this is stored in the process memory, but never revealed in ps ouput.
 
 ###DEPENDENCIES
 
