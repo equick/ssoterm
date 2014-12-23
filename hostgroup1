@@ -1,0 +1,6 @@
+type: menu
+
+Host Group 1 - DEV; hostgroup1_dev
+Host Group 1 - UAT; hostgroup1_uat
+Host Group 1 - PROD; hostgroup1_prod
+Host Group 1 - DR; hostgroup1_dr

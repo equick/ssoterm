@@ -1,0 +1,5 @@
+type: sshpass
+
+drhost1; username
+drhost2; username
+drhost3; username

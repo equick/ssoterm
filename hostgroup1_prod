@@ -1,0 +1,5 @@
+type: sshpass
+
+prodhost1; username
+prodhost2; username
+prodhost3; username
