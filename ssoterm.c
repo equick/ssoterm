@@ -58,7 +58,7 @@ int main(){
 	D fpdebug=fopen(debug_log, "w+");
 	fprintf(fpdebug,"cwd=%s\n",cwd);
 	fflush(fpdebug);
-	sprintf(mypass,"%s\n",getpass("Password: "));
+	sprintf(mypass,"%s",getpass("Password: "));
 
 	int i=0;
 
@@ -416,17 +416,21 @@ char *strstrip(char *s)
 
 //Write the password to a file descriptor (pseudoterminal) to be read from sshpass
 int sshpass(char *user,char *host, char *pass){
-	char cmd[70];
-	char *sshpass="/usr/bin/sshpass";
+	char cmd[100];
+	char *sshpass="/usr/bin/ssopass";
         D fprintf(fpdebug,"sshpass\n");
 	if( access( sshpass, F_OK ) == -1 ) {
 		fprintf(stderr,"Sorry unable to run. %s does not exist.\n",sshpass);			
 		exit(1);
 	}
+	//D fprintf(fpdebug,"pass=%s. len=%d\n",pass,strlen(pass));
+	
 	int fd=posix_openpt(O_RDWR);
-        write( fd, pass, strlen(pass) );
-        sprintf(cmd,"/usr/bin/sshpass -d%d ssh %s@%s", fd, user, host);
-        D fprintf(fpdebug,"sshpass: %s\n",cmd);
+	//int fd=open("/tmp/6",O_RDWR|O_CREAT, 0600);
+        write( fd, pass, 7 );
+        sprintf(cmd,"/usr/bin/ssopass -h %s -u %s -d %d",host,user,fd);
+        //sprintf(cmd,"/usr/bin/ssopass -p %s -h %s -u %s",pass,host,user);
+        D fprintf(fpdebug,"sshpass: %s.\n",cmd);
         int status = system(cmd);
         D fprintf(fpdebug,"sshpass: status=%d\n",status);
         close(fd);
