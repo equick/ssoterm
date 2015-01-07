@@ -24,6 +24,7 @@ char *users[MAXITEMS];
 char mtype[10];
 char errormsg[200];
 char mypass[20];	
+char myuser[20];
 
 int depth=0;
 int maxdepth=5;
@@ -52,10 +53,13 @@ int main(){
 
 	char debug_log[1024];
 	getcwd(cwd, sizeof(cwd));
-	
 	sprintf(debug_log,"%s/debug.log",cwd);
-	
 	D fpdebug=fopen(debug_log, "w+");
+
+	printf("User: ");
+	fgets (myuser, sizeof(myuser), stdin);
+	myuser[strlen(myuser)-1]='\0';
+	
 	fprintf(fpdebug,"cwd=%s\n",cwd);
 	fflush(fpdebug);
 	sprintf(mypass,"%s",getpass("Password: "));
@@ -423,13 +427,15 @@ int sshpass(char *user,char *host, char *pass){
 		fprintf(stderr,"Sorry unable to run. %s does not exist.\n",sshpass);			
 		exit(1);
 	}
-	//D fprintf(fpdebug,"pass=%s. len=%d\n",pass,strlen(pass));
 	
 	int fd=posix_openpt(O_RDWR);
-	//int fd=open("/tmp/6",O_RDWR|O_CREAT, 0600);
         write( fd, pass, 7 );
-        sprintf(cmd,"/usr/bin/ssopass -h %s -u %s -d %d",host,user,fd);
-        //sprintf(cmd,"/usr/bin/ssopass -p %s -h %s -u %s",pass,host,user);
+	if(!strcmp(myuser,user)){
+        	sprintf(cmd,"/usr/bin/ssopass -h %s -u %s -d %d",host,myuser,fd);
+	}else{
+		sprintf(cmd,"/usr/bin/ssopass -h %s -u %s -d %d -s %s -t sudo",host,myuser,fd,user);
+	}			
+
         D fprintf(fpdebug,"sshpass: %s.\n",cmd);
         int status = system(cmd);
         D fprintf(fpdebug,"sshpass: status=%d\n",status);
