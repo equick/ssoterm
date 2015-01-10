@@ -8,6 +8,8 @@
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define MAXDEPTH 5
 #define MAXITEMS 50
+#define SUDO 1
+#define PBRUN 2
 
 #ifdef DEBUG
  #define D if(1) 
@@ -15,16 +17,18 @@
  #define D if(0) 
 #endif
 
-char *menuitems1[MAXITEMS];
-char *menuitems2[MAXITEMS];
+char *menuitems[MAXITEMS];
 char *menufiles[MAXITEMS];
 char *hosts[MAXITEMS];
 char *users[MAXITEMS];
+char *jumps[MAXITEMS];
+int privtypes[MAXITEMS];
 
-char mtype[10];
+int hostlist=0;
 char errormsg[200];
 char mypass[20];	
 char myuser[20];
+
 
 int depth=0;
 int maxdepth=5;
@@ -42,16 +46,18 @@ int get_items(const char *mfile);
 void print_in_middle(WINDOW *win, int starty, int startx, int width, char *string, chtype color);
 void print_menu(const char *subtitle);
 void init_curses();
-void read_config(FILE* fp);
+void get_menutype(char* line);
 void finish();
 int process_menu(const char *title, const char *fname);
 char *strstrip(char *s);
-int sshpass(char *user,char *host, char *pass);
+int ssopass(char *user,char *host, char *pass, int privtype, char *jump);
+char *get_privtype(int type);
 
 
 int main(){
 
 	char debug_log[1024];
+
 	getcwd(cwd, sizeof(cwd));
 	sprintf(debug_log,"%s/debug.log",cwd);
 	D fpdebug=fopen(debug_log, "w+");
@@ -90,6 +96,8 @@ int process_menu(const char *title, const char *fname){
 	char menufile[50];
 	char user[20];
 	char host[20];
+	char jump[20];
+	int privtype;
 	char cmd[5];
 
 	init_curses();
@@ -125,7 +133,7 @@ int process_menu(const char *title, const char *fname){
 				return 0;
 			case 10: /* Enter */
 				strcpy(selected_item,item_name(current_item(my_menu)));
-				D fprintf(fpdebug,"process_menu: selected_item=%s mtype=%s mfname=%s depth=%d\n",selected_item,mtype,mfname[depth],depth);
+				D fprintf(fpdebug,"process_menu: selected_item=%s hostlist=%d mfname=%s depth=%d\n",selected_item,hostlist,mfname[depth],depth);
 				idx=item_index(current_item(my_menu));
 
 				if(!strcmp(selected_item,"Exit")){
@@ -139,7 +147,7 @@ int process_menu(const char *title, const char *fname){
                                 }
 
 				//print a submenu
-				if(!strcmp(mtype,"menu")){
+				if(!hostlist){
 					strcpy(menufile,menufiles[idx]);
 					D fprintf(fpdebug,"process_menu: selected_item=%s, menufile=%s\n",selected_item,menufile);
 					depth++;
@@ -152,15 +160,27 @@ int process_menu(const char *title, const char *fname){
 				}
 
 				//run ssh user@host
-				if(!strcmp(mtype,"sshpass")){
+				if(hostlist){
 					strcpy(host,hosts[idx]);
 					strcpy(user,users[idx]);
-					D fprintf(fpdebug,"process_menu: host=%s user=%s\n",host,user);
+					privtype=privtypes[idx];
+					int status;
 					finish();
-					int status = sshpass(user,host,mypass);
+					if (jumps[idx]!=NULL){
+						strcpy(jump,jumps[idx]);
+						status = ssopass(user,host,mypass,privtype,jump);
+						D fprintf(fpdebug,"process_menu: host=%s user=%s\n privtype=%d jump=%s",host,user,privtype,jump);
+					}else{
+						status = ssopass(user,host,mypass,privtype,NULL);
+						D fprintf(fpdebug,"process_menu: host=%s user=%s\n privtype=%d jump=NULL",host,user,privtype);
+					}
+
+					//finish();
+
 					if(status!=0) {
 						sprintf(errormsg,"Error connecting to %s",host);
 					}
+
 					D fprintf(fpdebug,"process_menu: cmd status=%d\n",status);
 					return status;
 				}
@@ -276,13 +296,12 @@ void print_in_middle(WINDOW *win, int starty, int startx, int width, char *strin
 }
 
 int get_items(const char *mfile){
-	char item1[100];
-        char item2[100];
+	char line[100];
 
         int i=0;
         int c;
 	int item_count;
-	char *token1, *token2;
+	char *token;
 	const char *delim=";";
 	char ftemp[200];
 
@@ -306,66 +325,109 @@ int get_items(const char *mfile){
 
 	// Create up to maxitems (default 50) in a menulist
         while(i<MAXITEMS){
-                menuitems1[i] = malloc( MAXITEMS * sizeof *menuitems1[i] );
-                menuitems2[i] = malloc( MAXITEMS * sizeof *menuitems2[i] );
+                menuitems[i] = malloc( MAXITEMS * sizeof *menuitems[i] );
                 menufiles[i] = malloc( MAXITEMS * sizeof *menufiles[i] );
                 hosts[i] = malloc( MAXITEMS * sizeof *hosts[i] );
                 users[i] = malloc( MAXITEMS * sizeof *users[i] );
+                jumps[i] = malloc( MAXITEMS * sizeof *jumps[i] );
                 i++;
         }
 
 	fflush(fpdebug);
-	read_config(fp);
 
+	//read in the menu file
 	i=0;
-	while(fgets(item1,sizeof(item1),fp)!=NULL){
+	int first=1;
+	while(fgets(line,sizeof(line),fp)!=NULL){
 
 		//skip blank lines
-		if (strlen(item1) < 2){
+		if (strlen(line) < 2){
 			continue;
 		}
 
-		//get the first token (menu item)
-		token1=(strtok(item1, delim));
-                D fprintf(fpdebug,"get_items: i=%d token1 %s\n",i,token1);
-		strcpy(menuitems1[i], token1);
-
-		//get the second token (menufile or user account)
-		token2 = strstrip(strtok(NULL, delim));
-                D fprintf(fpdebug,"get_items: i=%d token2 %s\n",i,token2);
-
-		//if menu, store the menufile corresponding to a menu item
-		if(!strcmp(mtype,"menu")){
-			if (token2!=NULL){
-				strcpy(menufiles[i], token2);
-			}
+		//first line should specify menu or hosts
+		if(first){
+			get_menutype(line);
+			first=0;
+			continue;
 		}
 
-		//if ssh, store the host and user
-		if(!strcmp(mtype,"sshpass")){
-                        if (token2!=NULL){
-				D fprintf(fpdebug,"get_items: token2=%s.\n",token2);
-                                strcpy(hosts[i], token1);
-                                strcpy(users[i], token2);
-				strcat(menuitems1[i]," - ");
-				strcat(menuitems1[i],token2);
-                        }
+		// read delimited fields on a line
+		int j=0;
+		token=strtok(line, delim);
+		while(token!=NULL){
+			token=strstrip(token);
+
+                	D fprintf(fpdebug,"get_items: hostlist=%d j=%d i=%d token %s\n",hostlist,j,i,token);
+			fflush(fpdebug);
+
+			switch(j){
+
+				//get the first token (menu item)
+				case 0:	
+					strcpy(menuitems[i], token);
+					if(hostlist)
+						strcpy(hosts[i], token);	
+					break;
+
+				//get the second token (menufile or user account)
+				case 1:
+					if(hostlist){
+						strcpy(users[i], token);
+						sprintf(menuitems[i],"%s - %s",hosts[i],token);
+					}else{
+						//if menu, store the menufile corresponding to a menu item
+						strcpy(menufiles[i], token);
+                        		}
+					break;
+				
+				//record whether this requires sudo or pbrun
+				case 2:
+					if(hostlist){
+						if(!strcmp(token,"sudo")){
+							privtypes[i]=SUDO;	
+						}else{
+							privtypes[i]=PBRUN;
+						}
+					}
+					break;
+
+				//record if there's a jump host
+                                case 3:
+                                        if(hostlist)
+						strcpy(jumps[i], token);
+					break;
+
+				default:
+					break;
+
+			}		
+			
+			j++;
+			token=strtok(NULL, delim);
                 }
+
+		//if there's no hostlist specified for this host, ensure this is null
+		if(hostlist && j<=3){
+			jumps[i]=NULL;
+			D fprintf(fpdebug,"get_items: resetting jumps i=%d\n",i);
+                        fflush(fpdebug);
+		}
 
 		i++;
 	}
 
 	if(!strcmp(mfile,"main")){
-		strcpy(menuitems1[i],"Exit");
+		strcpy(menuitems[i],"Exit");
 	}else{
-		strcpy(menuitems1[i],"<<Back");
+		strcpy(menuitems[i],"<<Back");
 	}
 
 	//store new_item for each item
 	my_items = (ITEM **)calloc(MAXITEMS, sizeof(ITEM *));
 	for(i=0; i < MAXITEMS; i++){
-                D fprintf(fpdebug,"get_items: i=%d menuitem %s\n",i,menuitems1[i]);
-		my_items[i] = new_item(menuitems1[i], "");
+                D fprintf(fpdebug,"get_items: i=%d menuitem %s\n",i,menuitems[i]);
+		my_items[i] = new_item(menuitems[i], "");
 	}
 
         fclose(fp);
@@ -373,20 +435,20 @@ int get_items(const char *mfile){
 	
 }
 
-void read_config(FILE* fp){
-	char line[100];
-	const char *delim=":";
-	char *token;
+void get_menutype(char* line){
 
-	D fprintf(fpdebug,"read_config\n");
-	fgets(line, sizeof(line), fp);
-	token=strstrip(strtok(line, delim));
-	D fprintf(fpdebug,"read_config: token=%s.\n",token);
+	D fprintf(fpdebug,"get_menutype\n");
 
-        if (!strcmp(token,"type")){
-		strcpy(mtype,strstrip(strtok(NULL, delim)));
-		D fprintf(fpdebug,"read_config: mtype=%s.\n",mtype);
-        }
+	line=strstrip(line);
+
+        if (!strcmp(line,"MENU")){
+		hostlist=0;
+	}else{
+		hostlist=1;
+	}
+
+	D fprintf(fpdebug,"get_menutype: hostlist=%d. line=%s.\n",hostlist,line);
+       
 }
 
 //Unpost and free all the memory taken up
@@ -403,6 +465,9 @@ void finish(){
 //strip whitespace
 char *strstrip(char *s)
 {
+    //D fprintf(fpdebug,"strstrip: 1. string=%s.\n",s);
+    fflush(fpdebug);
+
     size_t size;
     char *end;
 
@@ -415,31 +480,45 @@ char *strstrip(char *s)
     *(end + 1) = '\0';
     while (*s && isspace(*s))
     	s++;
+
+    //D fprintf(fpdebug,"strstrip: 2. string=%s.\n",s);
+    fflush(fpdebug);
     return s;
 }
 
-//Write the password to a file descriptor (pseudoterminal) to be read from sshpass
-int sshpass(char *user,char *host, char *pass){
+//Write the password to a file descriptor (pseudoterminal) to be read from ssopass
+int ssopass(char *user,char *host, char *pass, int privtype, char *jump){
 	char cmd[100];
-	char *sshpass="/usr/bin/ssopass";
-        D fprintf(fpdebug,"sshpass\n");
-	if( access( sshpass, F_OK ) == -1 ) {
-		fprintf(stderr,"Sorry unable to run. %s does not exist.\n",sshpass);			
+	char *ssopass="/usr/bin/ssopass";
+        D fprintf(fpdebug,"ssopass\n");
+	if( access( ssopass, F_OK ) == -1 ) {
+		fprintf(stderr,"Sorry unable to run. %s does not exist.\n",ssopass);			
 		exit(1);
 	}
 	
 	int fd=posix_openpt(O_RDWR);
-        write( fd, pass, strlen(pass)+1 );
+
+	//write the password and newline character
+        //write( fd, pass, strlen(pass)+1 );
+        write( fd, pass, strlen(pass) );
+
 	if(!strcmp(myuser,user)){
         	sprintf(cmd,"/usr/bin/ssopass -h %s -u %s -d %d",host,myuser,fd);
 	}else{
-		sprintf(cmd,"/usr/bin/ssopass -h %s -u %s -d %d -s %s -t sudo",host,myuser,fd,user);
+		if(jump==NULL){
+			sprintf(cmd,"/usr/bin/ssopass -h %s -u %s -d %d -s %s -t %s",host,myuser,fd,user,get_privtype(privtype));
+		}else{
+			sprintf(cmd,"/usr/bin/ssopass -h %s -u %s -d %d -s %s -t %s -j %s",host,myuser,fd,user,get_privtype(privtype),jump);
+		}
 	}			
 
-        D fprintf(fpdebug,"sshpass: %s.\n",cmd);
+        D fprintf(fpdebug,"ssopass: %s.\n",cmd);
         int status = system(cmd);
-        D fprintf(fpdebug,"sshpass: status=%d\n",status);
+        D fprintf(fpdebug,"ssopass: status=%d\n",status);
         close(fd);
 	return status;
 }
 
+char *get_privtype(int type){
+	return (type==SUDO) ? "sudo":"pbrun";
+}
