@@ -429,7 +429,7 @@ int sshpass(char *user,char *host, char *pass){
 	}
 	
 	int fd=posix_openpt(O_RDWR);
-        write( fd, pass, 7 );
+        write( fd, pass, strlen(pass)+1 );
 	if(!strcmp(myuser,user)){
         	sprintf(cmd,"/usr/bin/ssopass -h %s -u %s -d %d",host,myuser,fd);
 	}else{
