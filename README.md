@@ -7,7 +7,8 @@ This is a menu wrapper for logging into remote hosts without having to repeatedl
 ###DEPENDENCIES
 
 ssopass is required. This can be downloaded from https://github.com/equick/ssopass
-ssoterm expects this to exists at /usr/bin/ssopass
+
+ssoterm looks for this in /usr/bin/ssopass
 
 ###INSTALL
 
