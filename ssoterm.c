@@ -265,23 +265,23 @@ void print_menu(const char *subtitle){
 
 
         // Create the window to be associated with the menu
-        my_menu_win = newwin(10, 50, 4, 4);
+        my_menu_win = newwin(15, 60, 4, 4);
         keypad(my_menu_win, TRUE);
 
         // Set main window and sub window
         set_menu_win(my_menu, my_menu_win);
-        set_menu_sub(my_menu, derwin(my_menu_win, 6, 38, 3, 1));
-        set_menu_format(my_menu, 5, 1);
+        set_menu_sub(my_menu, derwin(my_menu_win, 11, 48, 3, 1));
+        set_menu_format(my_menu, 10, 1);
 
         // Set menu mark to the string " * "
         set_menu_mark(my_menu, " * ");
 
         // Print a border around the main window and print a title */
         box(my_menu_win, 0, 0);
-        print_in_middle(my_menu_win, 1, 0, 50, title, COLOR_PAIR(1));
+        print_in_middle(my_menu_win, 1, 0, 60, title, COLOR_PAIR(1));
         mvwaddch(my_menu_win, 2, 0, ACS_LTEE);
-        mvwhline(my_menu_win, 2, 1, ACS_HLINE, 48);
-        mvwaddch(my_menu_win, 2, 49, ACS_RTEE);
+        mvwhline(my_menu_win, 2, 1, ACS_HLINE, 58);
+        mvwaddch(my_menu_win, 2, 59, ACS_RTEE);
 
         // Post the menu
         post_menu(my_menu);
