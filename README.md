@@ -6,8 +6,8 @@ This is a menu wrapper for logging into remote hosts without having to repeatedl
 
 ###DEPENDENCIES
 
-sshpass is required. This can be downloaded from http://sshpass.sourceforge.net/
-ssoterm expects this to exists at /usr/bin/sshpass
+ssopass is required. This can be downloaded from https://github.com/equick/ssopass
+ssoterm expects this to exists at /usr/bin/ssopass
 
 ###INSTALL
 
@@ -21,7 +21,7 @@ In a terminal type:
 
   `./ssoterm`
 
-This will prompt for your password which is used to log in to all hosts.
+This will prompt for your user id and password which is used to log in to all hosts.
 Navigate in the menu to the host you want to connect to.
 
 ###CONFIGURATION
@@ -48,7 +48,3 @@ If there are problems running ssoterm, compile with -DDEBUG as follows:
 
 This will create debug.log which should help to see where it's going wrong.
 
-###TODO
-
-* Add functionality for sudo and powerbroker
-* Add functionality to log in via a jumpbox
